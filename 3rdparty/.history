@@ -1,0 +1,9 @@
+2015-11-12.00-13-40.ramanujam.home ls
+2015-11-12.00-17-02.ramanujam.home ls
+2015-11-12.00-17-03.ramanujam.home ls
+2015-11-12.00-17-24.ramanujam.home mv ~/Downloads/eigen-eigen-09a8e2186610.tar.gz .
+2015-11-12.00-17-27.ramanujam.home tar -xvzf eigen-eigen-09a8e2186610.tar.gz 
+2015-11-12.00-17-28.ramanujam.home ls
+2015-11-12.00-17-34.ramanujam.home rm -rf Eigen
+2015-11-12.00-17-42.ramanujam.home cp -r eigen-eigen-09a8e2186610/Eigen .
+2015-11-12.00-17-43.ramanujam.home ls
