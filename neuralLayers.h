@@ -18,7 +18,7 @@
 // classes for various kinds of layers
 #include "SoftmaxLoss.h"
 #include "Activation_function.h"
-#define quote(x) #x
+//#define quote(x) #x
 //#include <stdlib.h> 
 
 //#define EIGEN_DONT_PARALLELIZE
@@ -66,8 +66,6 @@ class Dropout_layer
 	}
 	template<typename Engine> 
 	void createMask(Engine &eng){
-        //cerr<<"The size of dropout mask is "<<dropout_mask.rows()
-        //#        <<"cols "<<dropout_mask.cols()<<endl;		
 		//Setting up the dropout sampler
 		boost::random::uniform_real_distribution<> real_01(0, 1);
 		for (int i=0; i<dropout_mask.rows(); i++){
@@ -76,16 +74,10 @@ class Dropout_layer
 					( real_01(eng) <1.0 - keep_probability ) ? 0: 1;
 			}
 		}
-		//cerr<<"dropout mask is "<<endl<<dropout_mask<<endl;
-		//getchar();
 	}
 	template<typename Derived, typename Engine>
 	void fProp(const MatrixBase<Derived> &input,
 				Engine &eng) {
-		if (this->keep_probability == 1.f) {
-			//	cerr<<"no dropout"<<endl;
-			return;
-		}
 		createMask(eng);
 		//cerr<<"Created the dropout mask "<<endl;
 		//cerr<<"The mask dimensions are "<<this->dropout_mask.rows()<<","<<this->dropout_mask.cols()<<endl;
@@ -103,6 +95,7 @@ class Dropout_layer
 	template<typename Derived, typename DropMask>
 	static void dropout(const MatrixBase<Derived> &input,
 							const MatrixBase<DropMask> &dropout_mask){
+
 		UNCONST(Derived, input, my_input);
 		//cerr<<"Dropping out"<<endl;
 		//cerr<<"dropout_mask "<<dropout_mask<<endl;
@@ -111,224 +104,213 @@ class Dropout_layer
 	
 	template<typename DerivedGOut>
 	void bProp(const MatrixBase<DerivedGOut> &input) {
-		if (this->keep_probability == 1.f) {
-			//cerr<<"no dropout"<<endl;
-			return;
-		}
 		//cerr<<"Before dropout the bProp input is "<<input<<endl;		
 		dropout(input,
 				this->dropout_mask);
-		//cerr<<"dropout mask is "<<this->dropout_mask<<endl;
 		//cerr<<"After dropout the bProp input is "<<input<<endl;				
+				
 		//UNCONST(DerivedGOut, input, my_input);
 		//my_input.noalias().array() *= dropout_mask.array();
 	}
-	precision_type getDropoutProbability(){
-		return(1. - this->keep_probability);
-	}
 };
-class Linear_layer
-{
-    private: 
-        Matrix<precision_type,Dynamic,Dynamic> U;
-        Matrix<precision_type,Dynamic,Dynamic> U_gradient;
-        Matrix<precision_type,Dynamic,Dynamic> U_velocity;
-        Matrix<precision_type,Dynamic,Dynamic> U_running_gradient;
-        Matrix<precision_type,Dynamic,Dynamic> U_running_parameter_update;
-        // Biases
-        Matrix<precision_type,Dynamic,1> b;
-        Matrix<precision_type,Dynamic,1> b_velocity;
-        Matrix<precision_type,Dynamic,1> b_running_gradient;
-        Matrix<precision_type,Dynamic,1> b_running_parameter_update;
-        Matrix<precision_type,Dynamic,1> b_gradient;
-
-		friend class model;
-
-    public:
-	Linear_layer() { }
-        Linear_layer(int rows, int cols) { resize(rows, cols); }
-
-	void resize(int rows, int cols)
-	{
-	    U.setZero(rows, cols);
-      U_gradient.setZero(rows, cols);
-      //U_running_gradient.setZero(rows, cols);
-      //U_running_parameter_updates.setZero(rows, cols);
-      //U_velocity.setZero(rows, cols);
-      b.resize(rows);
-      b_gradient.setZero(rows);
-      //b_running_gradient.resize(rows);
-      //b_velocity.resize(rows);
-	}
-
-	void read_weights(std::ifstream &U_file) { readMatrix(U_file, U); }
-	void write_weights(std::ofstream &U_file) { writeMatrix(U, U_file); }
-  void read_biases(std::ifstream &b_file) { readMatrix(b_file, b); }
-  void write_biases(std::ofstream &b_file) { writeMatrix(b, b_file); }
-
-
-	template <typename Engine>
-	void initialize(Engine &engine,
-      bool init_normal,
-      precision_type init_range,
-      string &parameter_update,
-      precision_type adagrad_epsilon)
-	{
-      if (parameter_update == "ADA") {
-        U_running_gradient = Matrix<precision_type,Dynamic,Dynamic>::Ones(U.rows(),U.cols())*adagrad_epsilon;
-        b_running_gradient = Matrix<precision_type,Dynamic,1>::Ones(b.size())*adagrad_epsilon;
-      }
-      if (parameter_update == "ADAD") {
-        U_running_gradient.setZero(U.rows(),U.cols());
-        b_running_gradient.setZero(b.size());
-        U_running_parameter_update.setZero(U.rows(),U.cols());
-        b_running_parameter_update.setZero(b.size());
-      }
-
-	    initMatrix(engine, U, init_normal, init_range);
-		//std::cerr<<U<<std::endl;
-		//cerr<<" U "<<endl<<U<<endl;
-      initBias(engine, b, init_normal, init_range);
-	}	  
-
-	int n_inputs () const { return U.cols(); }
-	int n_outputs () const { return U.rows(); }
-
-	int rows() const {return U.rows(); }
-	int cols() const {return U.cols(); }
+class Linear_layer {
 	
-  template <typename DerivedIn, typename DerivedOut>
-	void fProp(const MatrixBase<DerivedIn> &input,
-      const MatrixBase<DerivedOut> &output) const
-  {
-	  //cerr<<"input is "<<input<<endl;
-      UNCONST(DerivedOut, output, my_output);
-	  //cerr<<"in fprop"<<endl;
-	  //cerr<<"U is "<<U<<endl;
-      my_output.leftCols(input.cols()).noalias() = U*input;
-	  //cerr<<"My output is "<<my_output<<endl;
-	  //getchar();
+	class Linear_layer
+	{
+	    private: 	
+	        Matrix<precision_type,Dynamic,Dynamic> U;
+	        Matrix<precision_type,Dynamic,Dynamic> U_gradient;
+	        Matrix<precision_type,Dynamic,Dynamic> U_velocity;
+	        Matrix<precision_type,Dynamic,Dynamic> U_running_gradient;
+	        Matrix<precision_type,Dynamic,Dynamic> U_running_parameter_update;
+	        // Biases
+	        Matrix<precision_type,Dynamic,1> b;
+	        Matrix<precision_type,Dynamic,1> b_velocity;
+	        Matrix<precision_type,Dynamic,1> b_running_gradient;
+	        Matrix<precision_type,Dynamic,1> b_running_parameter_update;
+	        Matrix<precision_type,Dynamic,1> b_gradient;
 
-  }
+			friend class model;
 
-	// Sparse input
-  template <typename ScalarIn, typename DerivedOut>
-	void fProp(const USCMatrix<ScalarIn> &input,
-      const MatrixBase<DerivedOut> &output_const) const
-  {
-	    UNCONST(DerivedOut, output_const, output);
-	    output.setZero();
-	    uscgemm(1.0, U, input, output.leftCols(input.cols()));
-      // Each column corresponds to a training example. We 
-      // parallelize the adding of biases per dimension.
-      int num_examples = input.cols();
-      for (int example = 0;example < num_examples;example++) 
-      {
-          output.leftCols(input.cols()).col(example) += b;
-      }
-  }
+	    public:
+		Linear_layer() { }
+	        Linear_layer(int rows, int cols) { resize(rows, cols); }
 
-  
-  void changeRandomParam(precision_type offset, 
-						int &rand_row,
-						int &rand_col){
-  	changeRandomParamInMatrix(U, offset, rand_row, rand_col);
-  }  
+		void resize(int rows, int cols)
+		{
+		    U.setZero(rows, cols);
+	      U_gradient.setZero(rows, cols);
+	      //U_running_gradient.setZero(rows, cols);
+	      //U_running_parameter_updates.setZero(rows, cols);
+	      //U_velocity.setZero(rows, cols);
+	      b.resize(rows);
+	      b_gradient.setZero(rows);
+	      //b_running_gradient.resize(rows);
+	      //b_velocity.resize(rows);
+		}
 
-  precision_type getGradient(int row,
-  			 int col) { 
-
- 			return U_gradient(row,col);
-  }
-  
-  precision_type getGradSqdNorm() { 
-	  		//U_gradient /= minibatch_size
- 			return U_gradient.squaredNorm();
-  }
-				   
-  template <typename DerivedGOut, typename DerivedGIn>
-	void bProp(const MatrixBase<DerivedGOut> &input,
-      MatrixBase<DerivedGIn> &output) const
-  {
-	    UNCONST(DerivedGIn, output, my_output);
-	    my_output.noalias() = U.transpose()*input;
-	}
+		void read_weights(std::ifstream &U_file) { readMatrix(U_file, U); }
+		void write_weights(std::ofstream &U_file) { writeMatrix(U, U_file); }
+	  void read_biases(std::ifstream &b_file) { readMatrix(b_file, b); }
+	  void write_biases(std::ofstream &b_file) { writeMatrix(b, b_file); }
 
 
+		template <typename Engine>
+		void initialize(Engine &engine,
+	      bool init_normal,
+	      precision_type init_range,
+	      string &parameter_update,
+	      precision_type adagrad_epsilon)
+		{
+	      if (parameter_update == "ADA") {
+	        U_running_gradient = Matrix<precision_type,Dynamic,Dynamic>::Ones(U.rows(),U.cols())*adagrad_epsilon;
+	        b_running_gradient = Matrix<precision_type,Dynamic,1>::Ones(b.size())*adagrad_epsilon;
+	      }
+	      if (parameter_update == "ADAD") {
+	        U_running_gradient.setZero(U.rows(),U.cols());
+	        b_running_gradient.setZero(b.size());
+	        U_running_parameter_update.setZero(U.rows(),U.cols());
+	        b_running_parameter_update.setZero(b.size());
+	      }
+
+		    initMatrix(engine, U, init_normal, init_range);
+			//std::cerr<<U<<std::endl;
+			//cerr<<" U "<<endl<<U<<endl;
+	      initBias(engine, b, init_normal, init_range);
+		}	  
+
+		int n_inputs () const { return U.cols(); }
+		int n_outputs () const { return U.rows(); }
+
+		int rows() const {return U.rows(); }
+		int cols() const {return U.cols(); }
 	
-    template <typename DerivedGOut, typename DerivedIn>
-    void updateGradient( const MatrixBase<DerivedGOut> &bProp_input, 
-       const MatrixBase<DerivedIn> &fProp_input)
-    {
-        U_gradient += bProp_input*fProp_input.transpose();
-  	}
-		
-    void updateParams(precision_type learning_rate,
-					  int current_minibatch_size,
-                      precision_type momentum,
-					  precision_type L2_reg,
-					  precision_type grad_scale){
-						  
-      // get the bias gradient for all dimensions in parallel
-      //int size = b.size();
-      // This used to be multithreaded, but there was no measureable difference
+	  template <typename DerivedIn, typename DerivedOut>
+		void fProp(const MatrixBase<DerivedIn> &input,
+	     	MatrixBase<DerivedOut> const &output) const
+	  {
+		  //cerr<<"input is "<<input<<endl;
+	      UNCONST(DerivedOut, output, my_output);
 
-			 U += (learning_rate * U_gradient*grad_scale);
-  }
- 
-  void updateParams(precision_type learning_rate,
-				  int current_minibatch_size,
-                    precision_type momentum,
-				  precision_type L2_reg,
-				  bool norm_clipping,
-				  //bool update_clipping,
-				  precision_type norm_threshold){
-					  
-    // get the bias gradient for all dimensions in parallel
-    //int size = b.size();
-    // This used to be multithreaded, but there was no measureable difference
-    if (L2_reg > 0.0)
-    {
-        U_gradient -=  2*L2_reg*U;
-        //b_gradient -= 2*L2_reg*b;
-    }
-    if (momentum > 0.0)
-    {
-        U_velocity = momentum*U_velocity + U_gradient;
-        U += learning_rate * U_velocity;
-        //b_velocity = momentum*b_velocity + b_gradient;
-        //b += learning_rate * b_velocity;
-    }
-    else
-    {
-	  //cerr<<"the U gradient norm is "<<U_gradient.norm()<<endl;
-	  if (norm_clipping){
-		  scaleAndNormClip(U_gradient,
-		  				   current_minibatch_size,
-		  				   norm_threshold);
-		  U += learning_rate * U_gradient;			   
-	  } else {
-		 U += (learning_rate * U_gradient).unaryExpr(updateClipper());
-		 clipParamMatrix(U);
+	      my_output.noalias() = U*input;
+
 	  }
+
+		// Sparse input
+	  template <typename ScalarIn, typename DerivedOut>
+		void fProp(const USCMatrix<ScalarIn> &input,
+	      const MatrixBase<DerivedOut> &output_const) const
+	  {
+		    UNCONST(DerivedOut, output_const, output);
+		    output.setZero();
+		    uscgemm(1.0, U, input, output.leftCols(input.cols()));
+	      // Each column corresponds to a training example. We 
+	      // parallelize the adding of biases per dimension.
+	      int num_examples = input.cols();
+	      for (int example = 0;example < num_examples;example++) 
+	      {
+	          output.leftCols(input.cols()).col(example) += b;
+	      }
+	  }
+
+  
+	  void changeRandomParam(precision_type offset, 
+							int &rand_row,
+							int &rand_col){
+	  	changeRandomParamInMatrix(U, offset, rand_row, rand_col);
+	  }  
+
+	  precision_type getGradient(int row,
+	  			 int col) { 
+
+	 			return U_gradient(row,col);
+	  }
+  
+	  precision_type getGradSqdNorm() { 
+		  		//U_gradient /= minibatch_size
+	 			return U_gradient.squaredNorm();
+	  }
+				   
+	  template <typename DerivedGOut, typename DerivedGIn>
+		void bProp(const MatrixBase<DerivedGOut> &input,
+	      MatrixBase<DerivedGIn> const &output) const
+	  {
+		    UNCONST(DerivedGIn, output, my_output);
+		    my_output.noalias() = U.transpose()*input;
+		}
+
+	    template <typename DerivedGOut, typename DerivedIn>
+	    void updateGradient( const MatrixBase<DerivedGOut> &bProp_input, 
+	       const MatrixBase<DerivedIn> &fProp_input)
+	    {
+	        U_gradient += bProp_input*fProp_input.transpose();
+	  	}
+		
+	    void updateParams(precision_type learning_rate,
+						  int current_minibatch_size,
+	                      precision_type momentum,
+						  precision_type L2_reg,
+						  precision_type grad_scale){
+						  
+	      // get the bias gradient for all dimensions in parallel
+	      //int size = b.size();
+	      // This used to be multithreaded, but there was no measureable difference
+
+				 U += (learning_rate * U_gradient*grad_scale);
+	  }
+ 
+	  void updateParams(precision_type learning_rate,
+					  int current_minibatch_size,
+	                    precision_type momentum,
+					  precision_type L2_reg,
+					  bool norm_clipping,
+					  //bool update_clipping,
+					  precision_type norm_threshold){
+					  
+	    // get the bias gradient for all dimensions in parallel
+	    //int size = b.size();
+	    // This used to be multithreaded, but there was no measureable difference
+	    if (L2_reg > 0.0)
+	    {
+	        U_gradient -=  2*L2_reg*U;
+	        //b_gradient -= 2*L2_reg*b;
+	    }
+	    if (momentum > 0.0)
+	    {
+	        U_velocity = momentum*U_velocity + U_gradient;
+	        U += learning_rate * U_velocity;
+	        //b_velocity = momentum*b_velocity + b_gradient;
+	        //b += learning_rate * b_velocity;
+	    }
+	    else
+	    {
+		  //cerr<<"the U gradient norm is "<<U_gradient.norm()<<endl;
+		  if (norm_clipping){
+			  scaleAndNormClip(U_gradient,
+			  				   current_minibatch_size,
+			  				   norm_threshold);
+			  U += learning_rate * U_gradient;			   
+		  } else {
+			 U += (learning_rate * U_gradient).unaryExpr(updateClipper());
+			 clipParamMatrix(U);
+		  }
 	  
 
-    } 	
-}  
-  void resetGradient(){
-	  U_gradient.setZero();
-	  //b_gradient.setZero();
-  }
+	    } 	
+	}  
+	  void resetGradient(){
+		  U_gradient.setZero();
+		  //b_gradient.setZero();
+	  }
   
-  //Scaling for dropout at test time
-  void scale(const precision_type scaling_constant) {
-  	  U *= scaling_constant;
-  }
+	  //Scaling for dropout at test time
+	  void scale(const precision_type scaling_constant) {
+	  	  U *= scaling_constant;
+	  }
   
+	};
+
 };
-
-
-
 class Linear_diagonal_layer
 {
     private: 
@@ -618,7 +600,7 @@ class Output_word_embeddings
     const MatrixBase<DerivedOut> &output) const
 	  {
         UNCONST(DerivedOut, output, my_output);
-        my_output = (W * input).colwise() + b; 
+        my_output = (W * input).colwise() + b; //No bias for output words
 		//my_output = (*W) * input ; //No bias for output words
 
 	  }
@@ -654,7 +636,44 @@ class Output_word_embeddings
 	}
 	
 	
-
+	/*
+	//The NCE fprop version if we are sharing noise samples across the minibatch.
+	//If the noise samples are shared, we can densify the gradient computation, at least
+	//for the noise sample
+    template <typename DerivedIn, typename DerivedOutI, typename DerivedOutV>
+    void fPropShared(const MatrixBase<DerivedIn> &input,
+    const MatrixBase<DerivedOutI> &samples,
+    const MatrixBase<DerivedOutV> &output) const
+	{
+		//First LOAD in the embeddings into the matrix that is going to store them. 
+		//the first set are	
+        uscgemm(1.0,
+	        W.transpose(), 
+	        USCMatrix<precision_type>(W.rows(),samples,Matrix<precision_type,1,Dynamic>::Ones(samples.cols())),
+	        my_output.block(ngram*embedding_dimension, 0, embedding_dimension, input.cols()));
+		
+		
+		
+        UNCONST(DerivedOutV, output, my_output);
+		//cerr<<"my_output rows and cols"<<my_output.rows()<<" "<<my_output.cols()<<endl;
+		//cerr<<"input rows and cols"<<input.rows()<<input.cols()<<endl;
+        #pragma omp parallel for
+        for (int instance_id = 0; instance_id < samples.cols(); instance_id++)
+        {
+		  if (samples(0, instance_id) == -1) 
+			  continue;
+          for (int sample_id = 0; sample_id < samples.rows(); sample_id++)
+          {
+			//cerr<<"sample is "<<samples(sample_id, instance_id)<<endl;
+            my_output(sample_id, instance_id) = b(samples(sample_id, instance_id));
+          }
+        }
+		
+        USCMatrix<precision_type> sparse_output(W.rows(), samples, my_output);
+        uscgemm_masked(1.0, W, input, sparse_output);
+        my_output = sparse_output.values; // too bad, so much copying
+	}
+	*/
 	
     // Return single element of output matrix
     template <typename DerivedIn>
@@ -683,17 +702,14 @@ class Output_word_embeddings
 
 	  precision_type getGradient(int row,
 	  			 int col) {
-		 //cerr<<"W_gradient"<<endl<<W_gradient<<endl;
-		 //cerr<<"b_gradient"<<endl<<b_gradient<<endl;					 
 		 if (col == W.cols()) {
-			//cerr<<"Getting b gradient"<<endl;
 		 	return b_gradient(row,0);
 		}
 		 else{
 			 return W_gradient(row,col);
 		 }
-
-		//return W_gradient(row,col);
+					 //cerr<<"W_gradient"<<endl;
+					 //return W_gradient(row,col);
 					 
 	 }
 				 
@@ -706,18 +722,12 @@ template <typename DerivedIn, typename DerivedGOut>
     // predicted_embeddings is output_embedding_dimension x minibatch_size
     // bProp_input is vocab_size x minibatch_size
 	
-    W_gradient.noalias() += bProp_input * predicted_embeddings.transpose();
-	//cerr<<"b gradient before is "<<b_gradient<<endl;
-    b_gradient.noalias() += bProp_input.rowwise().sum();
-	//cerr<<"b gradient after is "<<b_gradient<<endl;
+    W_gradient += bProp_input * predicted_embeddings.transpose();
+    b_gradient += bProp_input.rowwise().sum();
 	//cerr<<"the W gradient norm is "<<W_gradient.norm()<<endl;
 	//getchar();
-	/*
-	cerr<<"bProp_input "<<bProp_input<<endl;
-	cerr<<"W_gradient in output layer is "<<endl<<W_gradient<<endl;
-	cerr<<"b_gradient in output layer is "<<endl<<b_gradient<<endl;
-	getchar();
-	*/
+	//cerr<<"W_gradient in output layer is "<<W_gradient<<endl
+	
   }
   
   precision_type getGradSqdNorm(){
@@ -797,18 +807,11 @@ template <typename DerivedIn, typename DerivedGOut>
 						int &rand_row,
 						int &rand_col){
   	//changeRandomParamInMatrix(W, offset, rand_row, rand_col);
-	 //cerr<<"In changeRandomParam for W "<<endl;
-	 //cerr<<"rand_row = "<<rand_row<<endl;
-	 //cerr<<"rand_col = "<<rand_col<<endl;
+	
 	 if (rand_col == W.cols()) {
 	 	//return b_gradient(row,0);
 		 int temp_col = 0;
-		 //cerr<<"perturbation is offset"<<offset<<endl;
-		 //cerr<<"previous bias is "<<endl<<b<<endl;
-		 //cerr<<"rand row "<<rand_row<<" temp col "<<temp_col<<endl;
-		 //cerr<<"Changing bias"<<endl;
 		changeRandomParamInMatrix(b,offset, rand_row, temp_col);
-		//cerr<<"new bias is "<<endl<<b<<endl;
 	}
 	 else{
 		 changeRandomParamInMatrix(W,offset, rand_row, rand_col);
@@ -979,6 +982,8 @@ template <typename DerivedIn, typename DerivedGOut>
 	}
 	
 
+
+
 };
 
 class Input_word_embeddings
@@ -1100,9 +1105,7 @@ class Input_word_embeddings
 	}
 
 
-  void readEmbeddingsFromFile(std::string file, vocabulary &vocab){
-  	::nplm::readEmbeddingsFromFile(file, vocab, W);
-  }
+
   template <typename DerivedGOut, typename DerivedIn>
   void updateGradient(const MatrixBase<DerivedGOut> &bProp_input,
      const MatrixBase<DerivedIn> &input_words)
@@ -1118,7 +1121,16 @@ class Input_word_embeddings
 	    for (int ngram=0; ngram<context_size; ngram++)
 	        W += learning_rate * input_words.middleRows(ngram*vocab_size, vocab_size) * bProp_input.middleRows(ngram*embedding_dimension, embedding_dimension).transpose()
 	    */
-
+	  /*
+	    for (int ngram=0; ngram<context_size; ngram++)
+	    {
+	        uscgemm(learning_rate, 
+			USCMatrix<precision_type>(W.rows(), input_words.middleRows(ngram, 1), Matrix<precision_type,1,Dynamic>::Ones(input_words.cols())),
+			bProp_input.block(ngram*embedding_dimension,0,embedding_dimension,input_words.cols()).transpose(),
+      	  	*W);
+	    }
+	  */
+      
       //IF WE WANT TO DO GRADIENT CLIPPING, THEN WE FIRST COMPUTE THE GRADIENT AND THEN
       //PERFORM CLIPPING WHILE UPDATING
 
@@ -1145,7 +1157,7 @@ class Input_word_embeddings
   					precision_type momentum,
 					precision_type L2_reg,
 					precision_type grad_scale){
-		
+						
 	    // Convert to std::vector for parallelization
         std::vector<int> update_items;
         for (int_map::iterator it = this->update_map.begin(); it != this->update_map.end(); ++it)
@@ -1153,7 +1165,7 @@ class Input_word_embeddings
             update_items.push_back(it->first);
         }
         int num_items = update_items.size();
-		
+
         #pragma omp parallel for
         for (int item_id=0; item_id<num_items; item_id++)
         {
@@ -1175,7 +1187,7 @@ class Input_word_embeddings
 					precision_type L2_reg,
 					bool norm_clipping,
 					precision_type norm_threshold){
-		//cerr<<"The in input embeddings update params"<<endl;				
+						
 	    // Convert to std::vector for parallelization
         std::vector<int> update_items;
         for (int_map::iterator it = this->update_map.begin(); it != this->update_map.end(); ++it)
@@ -1183,7 +1195,6 @@ class Input_word_embeddings
             update_items.push_back(it->first);
         }
         int num_items = update_items.size();
-		//cerr<<"The update items size is "<<num_items;
 		#ifdef CLIP_SPARSE
 		if (norm_clipping){
 			scaleAndNormClip(W_gradient,
@@ -1252,7 +1263,6 @@ class Input_word_embeddings
   	precision_type getGradient(int row,
   			 int col) { return W_gradient(row,col);}	
 			 
-
 
 };
 
